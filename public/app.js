@@ -2,7 +2,7 @@
 let clients = [];
 
 // Базовый URL API
-const API_URL = '/api';
+const API_URL = 'https://your-render-app.onrender.com/todos';
 
 // Загрузка данных
 async function loadFromFile() {
