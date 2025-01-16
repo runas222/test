@@ -2,21 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "public/**",
-      "use": "@vercel/static"
+      "src": "api/todos.js",
+      "use": "@vercel/node"
     },
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "public"
-      }
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "/api/todos"
     },
     {
       "src": "/(.*)",

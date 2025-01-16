@@ -2,7 +2,7 @@
 let clients = [];
 
 // Базовый URL API
-const API_URL = '/todos';
+const API_URL = '/api';
 
 // Загрузка данных
 async function loadFromFile() {
