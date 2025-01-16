@@ -1,61 +1,15 @@
-// Хранилище клиентов
-let clients = [];
-
-// Базовый URL API
-const API_URL = '/todos';
-
-// Загрузка данных
-async function loadFromFile() {
-  try {
-    const response = await fetch(API_URL, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    clients = await response.json();
-  } catch (error) {
-    console.error('Ошибка загрузки:', error);
-    throw error;
-  }
+// Инициализация Firestore
+if (!window.db) {
+  window.db = firebase.firestore();
 }
-
-// Сохранение данных
-async function saveToFile() {
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: document.getElementById('name').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        id: Date.now()
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Ошибка сохранения:', error);
-    throw error;
-  }
-}
+const clientsCollection = window.db.collection('clients');
 
 // Элементы DOM
 const form = document.getElementById('clientForm');
 const tableBody = document.querySelector('#clientsTable tbody');
 
 // Отображение клиентов
-function renderClients() {
+function renderClients(clients) {
   tableBody.innerHTML = '';
   clients.forEach((client, index) => {
     const row = document.createElement('tr');
@@ -65,8 +19,8 @@ function renderClients() {
       <td>${client.email}</td>
       <td>${client.phone || ''}</td>
       <td class="actions">
-        <button class="edit" onclick="editClient(${index})">✏️</button>
-        <button class="delete" onclick="deleteClient(${index})">🗑️</button>
+        <button class="edit" onclick="editClient('${client.id}')">✏️</button>
+        <button class="delete" onclick="deleteClient('${client.id}')">🗑️</button>
       </td>
     `;
     
@@ -81,42 +35,39 @@ form.addEventListener('submit', (e) => {
   const client = {
     name: document.getElementById('name').value,
     email: document.getElementById('email').value,
-    phone: document.getElementById('phone').value
+    phone: document.getElementById('phone').value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   
-  clients.push(client);
-  saveToFile().catch(error => console.error(error));
-  renderClients();
-  form.reset();
+  clientsCollection.add(client)
+    .then(() => {
+      form.reset();
+    })
+    .catch(error => console.error('Ошибка добавления:', error));
 });
 
 // Удаление клиента
-async function deleteClient(index) {
+function deleteClient(id) {
   if (confirm('Вы уверены, что хотите удалить клиента?')) {
-    const clientId = clients[index].id;
-    
-    try {
-      const response = await fetch(`${API_URL}/${clientId}`, {
-        method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
-      
-      clients.splice(index, 1);
-      renderClients();
-    } catch (error) {
-      console.error('Ошибка удаления:', error);
-    }
+    clientsCollection.doc(id).delete()
+      .catch(error => console.error('Ошибка удаления:', error));
   }
 }
 
-// Первоначальная загрузка клиентов
-loadFromFile()
-  .then(() => renderClients())
-  .catch(error => console.error(error));
+// Редактирование клиента
+function editClient(id) {
+  const newName = prompt('Введите новое имя:');
+  if (newName) {
+    clientsCollection.doc(id).update({ name: newName })
+      .catch(error => console.error('Ошибка редактирования:', error));
+  }
+}
+
+// Реальное обновление данных
+clientsCollection.orderBy('createdAt').onSnapshot(snapshot => {
+  const clients = [];
+  snapshot.forEach(doc => {
+    clients.push({ id: doc.id, ...doc.data() });
+  });
+  renderClients(clients);
+});
